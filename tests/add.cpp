@@ -1,8 +1,11 @@
 #include <iostream>
+#include <time.h>
 using namespace std;
-
+extern "C" {
 int add(int x, int y){
+    sleep(5);
     return x + y;
+}
 }
 
 int main(){

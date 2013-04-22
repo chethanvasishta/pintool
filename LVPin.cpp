@@ -9,7 +9,9 @@ using namespace std;
 unsigned int iCount = 0; //NEVER use globals
 
 #include <fstream>      // std::ifstream, std::ofstream
+#include <time.h>
 
+time_t t1, t2;
 
 /* execution time routine */
 void docount() {    
@@ -32,9 +34,17 @@ void Instruction(INS ins, void *v){
 }
 
 VOID Fini(INT32 code, VOID *v){
-    std::ofstream outfile ("count.txt", std::ofstream::binary);
-    outfile<<iCount;
+    std::ofstream outfile ("timeforadd.txt", std::ofstream::binary);
+    outfile<<(t2 - t1)+10;
     outfile.close();
+}
+
+void startTimer(){
+    time(&t1);
+}
+
+void endTimer(){
+    time(&t2);
 }
 
 void Image(IMG img, void *v){
@@ -71,6 +81,20 @@ void Image(IMG img, void *v){
         RTN_Close(freeRtn);
     }
 
+    // Find the add() function.
+    RTN addRtn = RTN_FindByName(img, "add");
+    if (RTN_Valid(addRtn))
+    {
+        RTN_Open(addRtn);
+        // Instrument free() to print the input argument value.
+        RTN_InsertCall(addRtn, IPOINT_BEFORE, (AFUNPTR)startTimer,
+                       IARG_END);
+        RTN_InsertCall(addRtn, IPOINT_AFTER, (AFUNPTR)endTimer,
+                       IARG_END);
+        RTN_Close(addRtn);
+    }
+
+
 }
 
 
@@ -79,6 +103,7 @@ int main(int argc, char *argv[]){
     //let's start with the instruction count 
     PIN_Init(argc, argv); 
     //INS_AddInstrumentFunction(Instruction, 0);
+    PIN_InitSymbols();
     
     IMG_AddInstrumentFunction(Image,0);
 
