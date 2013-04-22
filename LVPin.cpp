@@ -8,6 +8,9 @@ using namespace std;
 
 unsigned int iCount = 0; //NEVER use globals
 
+#include <fstream>      // std::ifstream, std::ofstream
+
+
 /* execution time routine */
 void docount() {    
     ++iCount;
@@ -29,7 +32,9 @@ void Instruction(INS ins, void *v){
 }
 
 VOID Fini(INT32 code, VOID *v){
-    cout<<"Instruction count :"<<iCount<<endl;
+    std::ofstream outfile ("count.txt", std::ofstream::binary);
+    outfile<<iCount;
+    outfile.close();
 }
 
 void Image(IMG img, void *v){
