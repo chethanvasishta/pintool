@@ -2,6 +2,10 @@
 #include <iostream>
 #include "pin.H"
 #include "routine.h"
+#include <fstream>      // std::ifstream, std::ofstream
+#include <time.h>
+#include <map>
+
 using namespace std;
 
 #define MALLOC "malloc"
@@ -9,10 +13,32 @@ using namespace std;
 
 unsigned int iCount = 0; //NEVER use globals
 
-#include <fstream>      // std::ifstream, std::ofstream
-#include <time.h>
-
 time_t t1, t2;
+
+class RoutineTimer{
+
+public:
+    void setStartTime(char* name, time_t start) { 
+        m_timeMap.insert(pair<char*, time_t>(name, start));
+    }
+
+    void setEndTime(char *name, time_t end) {
+        time_t start = m_timeMap[name];
+        time_t diff = end - start;
+        //if(m_cumulativeMap.find(name) != )
+            m_cumulativeMap[name] += diff;            
+        //else
+         //   m_cumulativeMap.insert(pair<char*, time_t>(name, diff));
+    }
+
+    map<char*, time_t>& getCumulativeMap() { return m_cumulativeMap; }
+
+private:
+    map<char*, time_t> m_timeMap;
+    map<char*, time_t> m_cumulativeMap;
+};
+
+RoutineTimer myTimer;
 
 /* execution time routine */
 void docount() {    
@@ -98,32 +124,42 @@ void Image(IMG img, void *v){
 
 VOID BeforeCall(CHAR * name, ADDRINT size)
 {
-    cout << name << "(" << size << ")" << endl;
+    time_t t;
+    time(&t);
+    myTimer.setStartTime(name, t);
 }
 
-VOID AfterCall(ADDRINT ret)
+VOID AfterCall(char* name, ADDRINT ret)
 {
-    cout << "  returns " << ret << endl;
+    time_t t;
+    time(&t);
+    myTimer.setEndTime(name, t);
 }
 
 
 void ProfileRoutine(RTN routine, void *v){
     RTN_Open(routine);
+    const char *name = RTN_Name(routine).c_str();
 
     // Instrument malloc() to print the input argument value and the return value.
     RTN_InsertCall(routine, IPOINT_BEFORE, (AFUNPTR)BeforeCall,
-            IARG_ADDRINT, "x",
+            IARG_ADDRINT, name,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
             IARG_END);
     RTN_InsertCall(routine, IPOINT_AFTER, (AFUNPTR)AfterCall,
-            IARG_FUNCRET_EXITPOINT_VALUE, IARG_END);
+            IARG_ADDRINT, name,
+            IARG_FUNCRET_EXITPOINT_VALUE, 
+            IARG_END);
 
     RTN_Close(routine);
 }
 
 VOID RoutineFinish(INT32 code, VOID *v){
-    std::ofstream outfile ("timeforadd.txt", std::ofstream::binary);
-    outfile<<(t2 - t1)+10;
+    std::ofstream outfile ("timer.txt", std::ofstream::binary);
+    map<char*, time_t>& cMap = myTimer.getCumulativeMap();
+    map<char*, time_t>::iterator iter = cMap.begin();
+    for(; iter != cMap.end(); ++iter)
+        outfile << iter->first << " " << iter->second << endl ;
     outfile.close();
 }
 
