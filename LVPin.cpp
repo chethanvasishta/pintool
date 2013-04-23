@@ -25,10 +25,12 @@ public:
     void setEndTime(char *name, time_t end) {
         time_t start = m_timeMap[name];
         time_t diff = end - start;
-        //if(m_cumulativeMap.find(name) != )
+        if(m_cumulativeMap.find(name) != m_cumulativeMap.end())
             m_cumulativeMap[name] += diff;            
-        //else
-         //   m_cumulativeMap.insert(pair<char*, time_t>(name, diff));
+        else
+            m_cumulativeMap.insert(pair<char*, time_t>(name, diff));
+        m_timeMap.erase(m_timeMap.find(name));
+
     }
 
     map<char*, time_t>& getCumulativeMap() { return m_cumulativeMap; }
