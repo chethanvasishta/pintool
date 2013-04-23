@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include "pin.H"
+#include "routine.h"
 using namespace std;
 
 #define MALLOC "malloc"
@@ -93,10 +94,38 @@ void Image(IMG img, void *v){
                        IARG_END);
         RTN_Close(addRtn);
     }
-
-
 }
 
+VOID BeforeCall(CHAR * name, ADDRINT size)
+{
+    cout << name << "(" << size << ")" << endl;
+}
+
+VOID AfterCall(ADDRINT ret)
+{
+    cout << "  returns " << ret << endl;
+}
+
+
+void ProfileRoutine(RTN routine, void *v){
+    RTN_Open(routine);
+
+    // Instrument malloc() to print the input argument value and the return value.
+    RTN_InsertCall(routine, IPOINT_BEFORE, (AFUNPTR)BeforeCall,
+            IARG_ADDRINT, "x",
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+            IARG_END);
+    RTN_InsertCall(routine, IPOINT_AFTER, (AFUNPTR)AfterCall,
+            IARG_FUNCRET_EXITPOINT_VALUE, IARG_END);
+
+    RTN_Close(routine);
+}
+
+VOID RoutineFinish(INT32 code, VOID *v){
+    std::ofstream outfile ("timeforadd.txt", std::ofstream::binary);
+    outfile<<(t2 - t1)+10;
+    outfile.close();
+}
 
 int main(int argc, char *argv[]){
     cout<<"My pin tool"<<endl;
@@ -105,9 +134,10 @@ int main(int argc, char *argv[]){
     //INS_AddInstrumentFunction(Instruction, 0);
     PIN_InitSymbols();
     
-    IMG_AddInstrumentFunction(Image,0);
+    //IMG_AddInstrumentFunction(Image,0);
+    RTN_AddInstrumentFunction(ProfileRoutine, 0);
 
-    PIN_AddFiniFunction(Fini, 0);
+    PIN_AddFiniFunction(RoutineFinish, 0);
     PIN_StartProgram();
     return 0;
 }
